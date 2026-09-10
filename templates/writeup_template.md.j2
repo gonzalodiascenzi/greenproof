@@ -1,0 +1,51 @@
+# {% if known_as %}{{ known_as }} — {{ cve_id }}{% else %}{{ cve_id }}{% endif %}
+
+> 🟡 **Borrador.** Completá las secciones marcadas `TODO` antes de mergear el PR — el merge es el commit que cuenta en tu calendario, así que vale la pena que diga algo tuyo.
+
+| Campo | Valor |
+|---|---|
+| CVE | [{{ cve_id }}](https://nvd.nist.gov/vuln/detail/{{ cve_id }}) |
+| Publicado (NVD) | {{ published or "sin dato" }} |
+| CVSS | {{ cvss_score or "sin dato" }} {% if cvss_severity %}({{ cvss_severity }}){% endif %} |
+| Vector | `{{ cvss_vector or "sin dato" }}` |
+| Software afectado | {{ affected_list or "sin dato en NVD — revisar manualmente" }} |
+
+## Descripción oficial (NVD)
+
+{{ description or "La NVD no tiene descripción para este CVE todavía — completá manualmente a partir de las fuentes." }}
+
+## En criollo — TODO
+
+<!--
+Explicá en 3-4 líneas, en lenguaje bajo-técnico: qué es esta falla, a quién afecta
+en la práctica y por qué importa. Pensalo para alguien que no es de seguridad.
+-->
+
+## Contexto real — TODO
+
+<!--
+¿Hubo un incidente conocido? ¿Un actor o grupo (APT) asociado, reportado
+públicamente? ¿Se explotó "in the wild" antes del parche? Si no tenés datos
+confirmados, escribí "sin datos públicos confirmados" en vez de especular.
+-->
+{% if note %}
+*Nota de referencia (curada, verificar antes de citar como propia): {{ note }}*
+{% endif %}
+
+## Indicadores / mitigación — TODO
+
+<!--
+IOCs si aplica (hashes, IPs, dominios de fuentes públicas), versión que
+corrige la falla, o mitigación recomendada mientras no hay parche.
+-->
+
+## Fuentes
+
+- NVD: https://nvd.nist.gov/vuln/detail/{{ cve_id }}
+{% for ref in references %}
+- {{ ref }}
+{% endfor %}
+
+---
+*Generado automáticamente por GreenProof a partir de datos públicos de la NVD el {{ generated_at }}. Las secciones `TODO` son responsabilidad de quien mergea.*
+
