@@ -1,0 +1,17 @@
+# Boletín de inteligencia — {{ generated_at }}
+
+> 🟣 **Generado por IA a partir de hechos ya verificados.** Cada línea de este boletín cita, entre corchetes, la fuente real en la que se basa (ver "Fuentes" al final). Ninguna afirmación acá es interpretación del bot ni reemplaza un análisis propio — un validador automático descarta el boletín entero si detecta un dato, identificador o URL que no venga literalmente de un hecho ya verificado por otro script de GreenProof.
+
+{% for item in items %}
+- {{ item.text }}{{ item.citation_suffix }}
+
+{% endfor %}
+## Fuentes
+
+{% for src in sources %}
+{{ loop.index }}. {{ src.label }} — {{ src.url }}
+{% endfor %}
+
+---
+*Generado automáticamente por GreenProof: hechos determinísticos + redacción acotada por IA, validada antes de commitear. {{ generated_at }}.*
+
