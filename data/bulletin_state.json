@@ -1,8 +1,10 @@
 {
-  "last_bulletin_at": null,
+  "last_bulletin_at": "2026-09-10",
   "covered": {
     "cve": [],
-    "kev": [],
+    "kev": [
+      "CVE-2026-19490"
+    ],
     "apt": []
   }
 }
