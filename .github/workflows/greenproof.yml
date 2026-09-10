@@ -47,6 +47,11 @@ jobs:
           CVE_ID=$(cat .greenproof_current_cve.txt)
           BRANCH="writeup/${CVE_ID,,}"
 
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            echo "Ya hay una rama/PR pendiente para ${CVE_ID} (${BRANCH}). No hago nada — revisá y mergeá o cerrá ese PR antes de la próxima corrida."
+            exit 0
+          fi
+
           git config user.name "greenproof-bot"
           git config user.email "actions@users.noreply.github.com"
 
