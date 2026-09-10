@@ -1,0 +1,73 @@
+name: GreenProof — borrador semanal de writeup
+
+on:
+  schedule:
+    # Lunes, miércoles y viernes 13:00 UTC = 10:00 America/Argentina/Buenos_Aires.
+    # 3 corridas por semana => config.yml debe decir commits_per_week: 3.
+    # Si cambiás la cadencia, actualizá ambos lugares (ver README).
+    - cron: "0 13 * * 1,3,5"
+  workflow_dispatch: {}   # para poder disparar una corrida manual de prueba
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: greenproof-draft
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Elegir y traer el próximo CVE (datos reales de la NVD)
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: python scripts/fetch_cve.py
+
+      - name: Generar el borrador del writeup
+        run: python scripts/generate_writeup.py
+
+      - name: Abrir rama y Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          CVE_ID=$(cat .greenproof_current_cve.txt)
+          BRANCH="writeup/${CVE_ID,,}"
+
+          git config user.name "greenproof-bot"
+          git config user.email "actions@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          git add "$(python -c "import yaml;print(yaml.safe_load(open('config.yml'))['writeups_dir'])")" \
+                  "$(python -c "import yaml;print(yaml.safe_load(open('config.yml'))['state_file'])")"
+          git commit -m "Draft: ${CVE_ID} writeup"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "Draft: ${CVE_ID}" \
+            --body "Borrador automático generado a partir de datos públicos de la NVD.
+
+          Completá las secciones \`TODO\` con tu propio análisis (explicación en criollo, contexto real, IOCs/mitigación) y después mergeá — **ese merge es el commit que va a contar en tu calendario**, con la fecha de hoy, no la del CVE.
+
+          Si el borrador no te sirve (dato pobre, tema repetido, etc.), cerrá el PR sin mergear; \`fetch_cve.py\` no lo va a volver a elegir porque ya quedó marcado como usado." \
+            --label "greenproof,draft" \
+            --head "$BRANCH"
+
+      - name: Revertir el marcado de 'usado' si no se pudo abrir el PR
+        if: failure()
+        run: |
+          git checkout -- data/used_cves.json || true
+
