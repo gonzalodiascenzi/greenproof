@@ -321,11 +321,18 @@ def main():
         )
         sys.exit(3)
 
-    model = config.get("bulletin_model", "claude-haiku-4-5")
+    model = config.get("bulletin_model", "claude-haiku-4-5-20251001")
 
     try:
         response = call_anthropic(facts, model, api_key)
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = "(no se pudo leer el cuerpo de la respuesta)"
+        print(f"No se pudo consultar la API de Anthropic: HTTP {e.code} — {body}", file=sys.stderr)
+        sys.exit(1)
+    except (urllib.error.URLError, TimeoutError) as e:
         print(f"No se pudo consultar la API de Anthropic: {e}", file=sys.stderr)
         sys.exit(1)
 
