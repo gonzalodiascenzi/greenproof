@@ -45,7 +45,14 @@ jobs:
       - name: Generar señal (enrich > KEV > APT)
         id: run
         run: |
+          # OJO: GitHub Actions invoca bash con -e por default en los steps
+          # `run:`, sin importar lo que pongas en `set`. Si no lo desactivamos
+          # acá, el script corta apenas el primer script (enrich_cve.py)
+          # devuelve exit 3 (su forma normal de decir "nada que hacer") —
+          # nunca llega a intentar KEV ni APT. set +e es necesario para que
+          # esta cascada funcione como está pensada.
           set -uo pipefail
+          set +e
           python scripts/enrich_cve.py
           code=$?
           kind="enrich"
@@ -92,4 +99,3 @@ jobs:
           git commit -m "$MSG"
           git pull --rebase origin main
           git push origin main
-
