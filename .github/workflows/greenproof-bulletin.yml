@@ -1,0 +1,80 @@
+name: GreenProof — boletín de inteligencia (deep research acotado)
+
+# Tercer track, separado a propósito de greenproof-intel.yml: este es el
+# único que depende de una API externa paga (Anthropic) y de un secret que
+# vos tenés que cargar. Así el resto del sistema (100% gratis, sin
+# dependencias externas) sigue andando igual aunque todavía no lo
+# configures. Ver README, sección "Boletín de inteligencia".
+#
+# El script (scripts/gen_bulletin.py) hace todo el trabajo real en Python
+# puro — junta hechos determinísticos de lo que ya está commiteado en main,
+# le pide a un modelo que redacte un ítem breve por hecho, y valida esa
+# respuesta antes de escribir nada: si el modelo inventa un dato, un
+# identificador o una URL que no esté en los hechos, el script rechaza todo
+# el boletín (exit 1) y este workflow no commitea nada.
+
+on:
+  schedule:
+    # 1 vez por día, poco después de la última corrida de señales
+    # automáticas del día (23:00 UTC) — así el boletín puede incluir lo que
+    # se generó esa misma jornada.
+    - cron: "30 23 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: greenproof-bulletin
+  cancel-in-progress: false
+
+jobs:
+  bulletin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Generar boletín (hechos reales + redacción acotada por IA)
+        id: run
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Mismo motivo que en greenproof-intel.yml: GitHub Actions invoca
+          # bash con -e por default en los steps `run:`, así que si no lo
+          # desactivamos acá, el script cortaría apenas gen_bulletin.py
+          # devuelve su exit 3 normal ("nada nuevo" / "falta el secret")
+          # antes de llegar a marcar changed=false correctamente.
+          set -uo pipefail
+          set +e
+          python scripts/gen_bulletin.py
+          code=$?
+
+          if [ "$code" -eq 0 ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$code" -eq 3 ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "El boletín no se generó (exit $code) — ver el log de arriba para el motivo."
+            exit 1
+          fi
+
+      - name: Commitear el boletín validado
+        if: steps.run.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "greenproof-bot"
+          git config user.email "actions@users.noreply.github.com"
+
+          git add -A
+          git commit -m "Agregar boletín de inteligencia (hechos citados + redacción validada por IA)"
+          git pull --rebase origin main
+          git push origin main
