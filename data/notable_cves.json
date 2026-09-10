@@ -1,0 +1,16 @@
+[
+  {"id": "CVE-2014-0160", "known_as": "Heartbleed", "note": "Falla en OpenSSL que permitía leer memoria del proceso remoto. Uno de los CVEs que más impacto público tuvo por lo simple del bug y lo masivo del uso de OpenSSL."},
+  {"id": "CVE-2017-5638", "known_as": "Apache Struts OGNL RCE", "note": "Explotada en la brecha de Equifax de 2017, ampliamente documentada en informes públicos."},
+  {"id": "CVE-2017-0144", "known_as": "EternalBlue", "note": "Vulnerabilidad en SMBv1 filtrada por el grupo Shadow Brokers; base del ransomware WannaCry."},
+  {"id": "CVE-2019-0708", "known_as": "BlueKeep", "note": "RCE pre-autenticación en RDP (Windows), considerada 'wormable' por Microsoft."},
+  {"id": "CVE-2020-1472", "known_as": "Zerologon", "note": "Falla criptográfica en Netlogon que permite tomar control de un controlador de dominio."},
+  {"id": "CVE-2021-26855", "known_as": "ProxyLogon", "note": "Parte de la cadena de exploits contra Microsoft Exchange atribuida públicamente a Hafnium."},
+  {"id": "CVE-2021-34527", "known_as": "PrintNightmare", "note": "RCE en el servicio de cola de impresión de Windows."},
+  {"id": "CVE-2021-44228", "known_as": "Log4Shell", "note": "RCE en Apache Log4j2 vía JNDI lookup; uno de los CVEs de mayor alcance por lo extendida que está la librería."},
+  {"id": "CVE-2022-30190", "known_as": "Follina", "note": "RCE vía la herramienta de diagnóstico de soporte de Microsoft (MSDT), explotada antes del parche."},
+  {"id": "CVE-2023-23397", "known_as": "Outlook EoP", "note": "Vulnerabilidad de elevación de privilegios en Outlook explotada sin interacción del usuario, reportada como usada por actores estatales."},
+  {"id": "CVE-2023-34362", "known_as": "MOVEit Transfer SQLi", "note": "Explotada en campañas masivas de robo de datos atribuidas al grupo Cl0p."},
+  {"id": "CVE-2024-3094", "known_as": "xz backdoor", "note": "Backdoor insertado deliberadamente en liblzma/xz-utils, descubierto antes de una adopción masiva en distros."},
+  {"id": "CVE-2024-6387", "known_as": "regreSSHion", "note": "Race condition en OpenSSH server (RCE) que revivió una vulnerabilidad corregida años antes."}
+]
+
