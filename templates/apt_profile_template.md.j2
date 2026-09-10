@@ -1,0 +1,42 @@
+# {{ name }} — perfil de actor ({{ attack_id }})
+
+> 🔵 **Contenido automático, 100% citado.** Este perfil se arma solo con datos públicos de [MITRE ATT&CK]({{ url }}). No hay análisis propio incluido a menos que lo escribas vos en "Notas propias".
+
+| Campo | Valor |
+|---|---|
+| ID (MITRE ATT&CK) | [{{ attack_id }}]({{ url }}) |
+| Alias conocidos | {{ aliases | join(", ") }} |
+
+## Descripción oficial (MITRE ATT&CK)
+
+{{ description }}
+
+## Técnicas asociadas (MITRE ATT&CK)
+
+{% if techniques %}
+| ID | Técnica |
+|---|---|
+{% for t in techniques %}
+| [{{ t.id }}](https://attack.mitre.org/techniques/{{ t.id.replace(".", "/") }}) | {{ t.name }} |
+{% endfor %}
+
+*Lista no exhaustiva — ver el perfil completo en MITRE ATT&CK para el detalle actualizado de técnicas, software y campañas asociadas.*
+{% else %}
+Sin técnicas registradas en el snapshot usado para este perfil.
+{% endif %}
+
+## Notas propias — TODO (opcional)
+
+<!--
+Si te cruzaste con este grupo en algún incidente, reporte o CTI que hayas
+leído vos, sumalo acá con su fuente. Si no, dejalo así — el perfil de
+arriba ya es 100% real y no necesita esto para tener sentido.
+-->
+
+## Fuentes
+
+- MITRE ATT&CK: {{ url }}
+
+---
+*Generado automáticamente por GreenProof a partir del dataset público de MITRE ATT&CK ({{ generated_at }}). Contenido factual, sin interpretación agregada.*
+
