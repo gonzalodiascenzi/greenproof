@@ -19,3 +19,17 @@ apt_queue_file: data/known_apts.json
 apt_state_file: data/used_apts.json
 kev_dir: threat-intel/kev
 kev_state_file: data/used_kev.json
+
+# Boletín de inteligencia (threat-intel/bulletins/) — deep research acotado.
+# Junta hechos 100% determinísticos de lo de arriba (nada se investiga de
+# nuevo acá) y un modelo de Anthropic redacta un ítem breve por hecho, en
+# JSON estructurado. Un validador rechaza el boletín entero si el modelo
+# menciona un dato, identificador o URL que no esté en los hechos que se le
+# dieron. Necesita el secret ANTHROPIC_API_KEY configurado en el repo — sin
+# eso, el workflow no hace nada (exit 3, no falla). Ver README, sección
+# "Boletín de inteligencia". bulletin_model es ajustable: confirmá en
+# docs.claude.com/en/docs/about-claude/models qué id de modelo está vigente
+# al momento de configurar el secret.
+bulletin_dir: threat-intel/bulletins
+bulletin_state_file: data/bulletin_state.json
+bulletin_model: claude-haiku-4-5
