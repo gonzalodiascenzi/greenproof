@@ -32,4 +32,4 @@ kev_state_file: data/used_kev.json
 # al momento de configurar el secret.
 bulletin_dir: threat-intel/bulletins
 bulletin_state_file: data/bulletin_state.json
-bulletin_model: claude-haiku-4-5
+bulletin_model: claude-haiku-4-5-20251001
