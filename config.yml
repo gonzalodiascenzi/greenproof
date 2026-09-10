@@ -3,7 +3,7 @@
 # .github/workflows/greenproof.yml para que coincidan (ver README).
 
 track: cybersec
-commits_per_week: 3
+commits_per_week: 7
 writeups_dir: cve-writeups
 queue_file: data/notable_cves.json
 state_file: data/used_cves.json
