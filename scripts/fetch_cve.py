@@ -13,10 +13,18 @@ import sys
 import time
 import urllib.request
 import urllib.error
+import urllib.parse
 import yaml
+from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NVD_ENDPOINT = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+
+# Cuando la cola curada se agota, buscamos CVEs recientes reales en este
+# rango (días hacia atrás) y con este piso de severidad, para no traer
+# ruido de bajo impacto.
+FRESH_LOOKBACK_DAYS = 30
+FRESH_MIN_CVSS = 7.0
 
 
 def load_config():
@@ -36,6 +44,64 @@ def next_cve_id(queue, used_ids):
         if item["id"] not in used_ids:
             return item
     return None
+
+
+def find_fresh_cve(used_ids, api_key=None):
+    """
+    Cuando la cola curada (data/notable_cves.json) ya se usó entera, busca
+    en vivo en la NVD un CVE publicado en los últimos FRESH_LOOKBACK_DAYS
+    días con CVSS >= FRESH_MIN_CVSS que todavía no usamos. Se queda con el
+    de mayor severidad. Esto es lo que hace que la cola no se agote nunca:
+    en vez de una lista fija, es un piso curado + descubrimiento real
+    continuo desde la fuente oficial.
+    """
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=FRESH_LOOKBACK_DAYS)
+    params = {
+        "pubStartDate": start.strftime("%Y-%m-%dT%H:%M:%S.000"),
+        "pubEndDate": end.strftime("%Y-%m-%dT%H:%M:%S.000"),
+        "resultsPerPage": 2000,
+    }
+    url = f"{NVD_ENDPOINT}?{urllib.parse.urlencode(params)}"
+    headers = {"User-Agent": "greenproof/0.1 (+https://github.com/)"}
+    if api_key:
+        headers["apiKey"] = api_key
+
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, urllib.error.HTTPError) as e:
+        print(f"No se pudo consultar el feed de CVEs recientes de la NVD: {e}", file=sys.stderr)
+        return None
+
+    candidates = []
+    for v in data.get("vulnerabilities", []):
+        cve = v.get("cve", {})
+        cid = cve.get("id")
+        if not cid or cid in used_ids:
+            continue
+        metric = pick_best_metric(cve.get("metrics", {}))
+        score = metric.get("score")
+        if score is not None and score >= FRESH_MIN_CVSS:
+            candidates.append((score, cve.get("published", ""), cid))
+
+    if not candidates:
+        return None
+
+    # Mayor severidad primero; a igual score, el más reciente.
+    candidates.sort(key=lambda c: (c[0], c[1]), reverse=True)
+    best_id = candidates[0][2]
+    return {
+        "id": best_id,
+        "known_as": None,
+        "note": (
+            "CVE detectado automáticamente en el feed de publicaciones "
+            "recientes de la NVD (no está en la cola curada a mano) — "
+            f"CVSS >= {FRESH_MIN_CVSS}, publicado en los últimos "
+            f"{FRESH_LOOKBACK_DAYS} días."
+        ),
+    }
 
 
 def fetch_from_nvd(cve_id, api_key=None, retries=3):
@@ -129,14 +195,18 @@ def main():
     queue = load_json(os.path.join(ROOT, config["queue_file"]), [])
     state = load_json(os.path.join(ROOT, config["state_file"]), {"used": []})
     used_ids = {u["id"] for u in state["used"]}
+    api_key = os.environ.get("NVD_API_KEY")
 
     item = next_cve_id(queue, used_ids)
     if item is None:
-        print("No quedan CVEs sin usar en la cola. Agregá más en data/notable_cves.json.")
-        sys.exit(1)
+        print("Cola curada agotada — busco un CVE reciente real en la NVD.")
+        item = find_fresh_cve(used_ids, api_key=api_key)
+    if item is None:
+        print("No hay CVEs nuevos: ni en la cola curada, ni en el feed reciente de la NVD.")
+        sys.exit(3)
 
-    print(f"Próximo CVE: {item['id']} ({item.get('known_as', 'sin apodo')})")
-    nvd_response = fetch_from_nvd(item["id"], api_key=os.environ.get("NVD_API_KEY"))
+    print(f"Próximo CVE: {item['id']} ({item.get('known_as') or 'sin apodo'})")
+    nvd_response = fetch_from_nvd(item["id"], api_key=api_key)
     data = normalize(nvd_response, item)
     if data is None:
         print(f"La NVD no devolvió datos para {item['id']}.")
@@ -155,4 +225,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
