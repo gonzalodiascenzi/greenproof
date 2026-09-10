@@ -1,0 +1,36 @@
+# Alerta KEV — {{ cve_id }}{{ " (" ~ vulnerability_name ~ ")" if vulnerability_name else "" }}
+
+> 🔴 **Explotación confirmada.** Este CVE está en el [catálogo KEV de CISA](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) — Known Exploited Vulnerabilities — que lista fallas con explotación activa y **verificada**, no teórica.
+
+| Campo | Valor |
+|---|---|
+| CVE | [{{ cve_id }}](https://nvd.nist.gov/vuln/detail/{{ cve_id }}) |
+| Vendor / Producto | {{ vendor_project }} / {{ product }} |
+| Agregado a KEV | {{ date_added }} |
+| Plazo de remediación (CISA, agencias federales EE.UU.) | {{ due_date }} |
+| Uso conocido en ransomware | {{ known_ransomware_use }} |
+
+## Descripción (CISA KEV)
+
+{{ short_description }}
+
+## Acción requerida (CISA)
+
+{{ required_action }}
+
+## Notas propias — TODO (opcional)
+
+<!--
+¿Lo viste en algún entorno real? ¿Tenés mitigación aplicada o pendiente?
+Sumalo acá. No es necesario para que esta alerta tenga valor — ya es un
+hecho verificado por CISA, no una hipótesis.
+-->
+
+## Fuentes
+
+- CISA KEV Catalog: https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+- NVD: https://nvd.nist.gov/vuln/detail/{{ cve_id }}
+
+---
+*Generado automáticamente por GreenProof a partir del catálogo público KEV de CISA el {{ generated_at }}.*
+
