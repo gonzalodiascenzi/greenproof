@@ -1,0 +1,95 @@
+name: GreenProof — señales automáticas (KEV / APT / enrichment)
+
+# Este workflow es distinto del de "greenproof.yml": ese abre un PR para que
+# vos escribas tu propio análisis. Este otro NO abre PR — commitea directo
+# a main — porque todo lo que genera es 100% cita textual de una fuente
+# pública (CISA KEV, MITRE ATT&CK), sin ninguna interpretación agregada por
+# el bot. Ver README, sección "Señales automáticas".
+#
+# Cada corrida intenta, en este orden, UNA sola cosa real:
+#   1. Enriquecer un CVE que ya mergeaste con una novedad real de KEV.
+#   2. Si no hay nada para enriquecer, generar una alerta KEV nueva.
+#   3. Si tampoco hay eso, generar el próximo perfil de actor (APT) de la cola.
+# Si ninguna de las tres tiene material real para hoy, no hace ningún
+# commit — no rellena con nada artificial.
+
+on:
+  schedule:
+    # 5 corridas por día, en horario diurno de Argentina (UTC-3):
+    # 08:00, 11:00, 14:00, 17:00, 20:00 ART.
+    - cron: "0 11,14,17,20,23 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: greenproof-intel
+  cancel-in-progress: false
+
+jobs:
+  intel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Generar señal (enrich > KEV > APT)
+        id: run
+        run: |
+          set -uo pipefail
+          python scripts/enrich_cve.py
+          code=$?
+          kind="enrich"
+
+          if [ "$code" -eq 3 ]; then
+            python scripts/gen_kev_alert.py
+            code=$?
+            kind="kev"
+          fi
+
+          if [ "$code" -eq 3 ]; then
+            python scripts/gen_apt_profile.py
+            code=$?
+            kind="apt"
+          fi
+
+          if [ "$code" -eq 0 ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "kind=$kind" >> "$GITHUB_OUTPUT"
+          elif [ "$code" -eq 3 ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Sin novedades reales en KEV, enrichment ni la cola de APTs por ahora."
+          else
+            echo "Falló generando '$kind' (exit $code)."
+            exit 1
+          fi
+
+      - name: Commitear la novedad real
+        if: steps.run.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "greenproof-bot"
+          git config user.email "actions@users.noreply.github.com"
+
+          KIND="${{ steps.run.outputs.kind }}"
+          case "$KIND" in
+            enrich) MSG="Enriquecer writeup con novedad real de CISA KEV" ;;
+            kev) MSG="Agregar alerta KEV (CISA) para CVE con explotación confirmada" ;;
+            apt) MSG="Agregar perfil de actor (MITRE ATT&CK)" ;;
+            *) MSG="GreenProof: señal automática" ;;
+          esac
+
+          git add -A
+          git commit -m "$MSG"
+          git pull --rebase origin main
+          git push origin main
+
