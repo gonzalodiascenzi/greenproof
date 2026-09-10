@@ -8,3 +8,14 @@ writeups_dir: cve-writeups
 queue_file: data/notable_cves.json
 state_file: data/used_cves.json
 
+# Señales automáticas (threat-intel/) — corren aparte del writeup profundo
+# de arriba, no necesitan que completes ningún TODO porque no agregan
+# ninguna interpretación propia: son 100% datos citados de fuentes
+# públicas (CISA KEV, MITRE ATT&CK). Por eso el workflow las commitea
+# directo a main en vez de abrir PR — ver README, sección "Señales
+# automáticas".
+apt_dir: threat-intel/apt
+apt_queue_file: data/known_apts.json
+apt_state_file: data/used_apts.json
+kev_dir: threat-intel/kev
+kev_state_file: data/used_kev.json
