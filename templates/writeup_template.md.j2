@@ -1,4 +1,4 @@
-# {% if known_as %}{{ known_as }} — {{ cve_id }}{% else %}{{ cve_id }}{% endif %}
+# {{ (known_as ~ " — " ~ cve_id) if known_as else cve_id }}
 
 > 🟡 **Borrador.** Completá las secciones marcadas `TODO` antes de mergear el PR — el merge es el commit que cuenta en tu calendario, así que vale la pena que diga algo tuyo.
 
@@ -29,6 +29,7 @@ públicamente? ¿Se explotó "in the wild" antes del parche? Si no tenés datos
 confirmados, escribí "sin datos públicos confirmados" en vez de especular.
 -->
 {% if note %}
+
 *Nota de referencia (curada, verificar antes de citar como propia): {{ note }}*
 {% endif %}
 
@@ -48,4 +49,3 @@ corrige la falla, o mitigación recomendada mientras no hay parche.
 
 ---
 *Generado automáticamente por GreenProof a partir de datos públicos de la NVD el {{ generated_at }}. Las secciones `TODO` son responsabilidad de quien mergea.*
-
