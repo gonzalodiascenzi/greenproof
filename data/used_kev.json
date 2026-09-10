@@ -1,4 +1,9 @@
 {
-  "used": []
+  "used": [
+    {
+      "cve_id": "CVE-2026-19490",
+      "drafted_at": "2026-09-10",
+      "path": "threat-intel/kev/CVE-2026-19490.md"
+    }
+  ]
 }
-
