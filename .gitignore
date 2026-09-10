@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.greenproof_cve_data.json
+.greenproof_current_cve.txt
+
