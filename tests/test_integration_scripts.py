@@ -13,8 +13,8 @@ class IntegrationScriptTests(unittest.TestCase):
             with patch.object(module, "fetch_from_nvd", return_value=load_fixture("nvd_cve_response.json")):
                 module.main()
             data = json.loads((repo / ".greenproof_cve_data.json").read_text(encoding="utf-8"))
-            self.assertEqual(data["cve_id"], "CVE-2014-0160")
-            self.assertEqual((repo / ".greenproof_current_cve.txt").read_text(encoding="utf-8"), "CVE-2014-0160")
+            self.assertEqual(data["cve_id"], "CVE-2026-99999")
+            self.assertEqual((repo / ".greenproof_current_cve.txt").read_text(encoding="utf-8"), "CVE-2026-99999")
 
     def test_generate_writeup_renders_markdown_and_updates_state(self):
         with temporary_repo_copy() as repo:

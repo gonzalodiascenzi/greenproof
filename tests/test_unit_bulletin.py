@@ -38,6 +38,8 @@ class BulletinUnitTests(unittest.TestCase):
 
     def test_build_facts_skips_already_covered_items(self):
         with temporary_repo_copy() as repo:
+            (repo / "data" / "used_kev.json").write_text("{\n  \"used\": []\n}\n", encoding="utf-8")
+            (repo / "data" / "used_apts.json").write_text("{\n  \"used\": []\n}\n", encoding="utf-8")
             writeup_dir = repo / "cve-writeups" / "2026"
             writeup_dir.mkdir(parents=True, exist_ok=True)
             (writeup_dir / "CVE-2026-99999.md").write_text("writeup", encoding="utf-8")
