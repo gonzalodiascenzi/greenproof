@@ -21,9 +21,8 @@ no un analista que opina:
    opinión/especulación. Si algo de esto falla, NO se commitea nada — el
    validador rechaza, no "arregla".
 
-Solo se reportan hechos nuevos desde el último boletín (data/bulletin_state.json
-trackea qué ids ya se cubrieron) — así el boletín crece con cada ciclo real
-sin repetirse nunca a sí mismo.
+Solo se reportan hechos nuevos desde el último boletín — así el boletín crece
+con cada ciclo real sin repetirse nunca a sí mismo.
 
 Exit codes:
   0 = generó un boletín nuevo, validado (hay que commitear)
@@ -38,19 +37,14 @@ import re
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
 
-import yaml
-from jinja2 import Environment, FileSystemLoader
+from gp_common import ROOT, atomic_write_json, atomic_write_text, load_config, template_env, utc_today
+from gp_state import PUBLICATION_TYPES, StateStore
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
 KEV_CATALOG_URL = "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
 
-# Términos que delatan opinión, recomendación o especulación propia del bot.
-# Si aparecen en el texto generado, se rechaza el boletín entero — un
-# reportero cita hechos, no opina ni especula por vos.
 BANNED_WORDS = [
     "recomendamos",
     "recomendable",
@@ -90,18 +84,6 @@ Reglas:
 """
 
 
-def load_config():
-    with open(os.path.join(ROOT, "config.yml"), encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
-def load_json(path, default):
-    if not os.path.exists(path):
-        return default
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
 def nvd_url(cve_id):
     return f"https://nvd.nist.gov/vuln/detail/{cve_id}"
 
@@ -110,14 +92,7 @@ def mitre_url(attack_id):
     return f"https://attack.mitre.org/groups/{attack_id}"
 
 
-def build_facts(config, cursor):
-    """
-    Devuelve (facts_for_model, fact_meta) donde:
-    - facts_for_model: lista de {id, type, text, source_url} — esto es lo
-      único que ve el modelo.
-    - fact_meta: dict fact_id -> {"kind": "cve"|"kev"|"apt"|"stat", "natural_id": str|None}
-      para poder actualizar el cursor después, sin que el modelo lo maneje.
-    """
+def build_facts(config, cursor, store):
     facts = []
     meta = {}
     counter = [0]
@@ -131,49 +106,44 @@ def build_facts(config, cursor):
 
     covered = cursor.get("covered", {"cve": [], "kev": [], "apt": []})
 
-    cve_state = load_json(os.path.join(ROOT, config["state_file"]), {"used": []})
-    for entry in cve_state.get("used", []):
-        cid = entry.get("id")
-        if not cid or cid in covered.get("cve", []):
+    for entry in store.list_publications(PUBLICATION_TYPES["cve"]):
+        cid = entry["natural_id"]
+        if cid in covered.get("cve", []):
             continue
         path = os.path.join(ROOT, entry.get("path", ""))
         if not os.path.exists(path):
-            continue  # el PR todavía no mergeó — no cuenta como hecho real todavía
+            continue
         text = (
             f"Se mergeó un writeup propio para {cid}, publicado en el "
-            f"repositorio el {entry.get('drafted_at', 'fecha sin registrar')}."
+            f"repositorio el {entry.get('generated_at', 'fecha sin registrar')}."
         )
         add_fact("cve", text, nvd_url(cid), natural_id=cid, label="NVD")
 
-    kev_state = load_json(os.path.join(ROOT, config["kev_state_file"]), {"used": []})
-    for entry in kev_state.get("used", []):
-        cid = entry.get("cve_id")
-        if not cid or cid in covered.get("kev", []):
+    for entry in store.list_publications(PUBLICATION_TYPES["kev"]):
+        cid = entry["natural_id"]
+        if cid in covered.get("kev", []):
             continue
         text = (
             f"El CVE {cid} fue agregado al catálogo KEV (Known Exploited "
             f"Vulnerabilities) de CISA — GreenProof lo registró el "
-            f"{entry.get('drafted_at', 'fecha sin registrar')}."
+            f"{entry.get('generated_at', 'fecha sin registrar')}."
         )
         add_fact("kev", text, KEV_CATALOG_URL, natural_id=cid, label="CISA KEV Catalog")
 
-    apt_state = load_json(os.path.join(ROOT, config["apt_state_file"]), {"used": []})
-    for entry in apt_state.get("used", []):
-        aid = entry.get("attack_id")
-        if not aid or aid in covered.get("apt", []):
+    for entry in store.list_publications(PUBLICATION_TYPES["apt"]):
+        aid = entry["natural_id"]
+        if aid in covered.get("apt", []):
             continue
         name = entry.get("name", aid)
         text = (
             f"Se publicó el perfil de {name} ({aid}), citando datos públicos "
-            f"de MITRE ATT&CK, el {entry.get('drafted_at', 'fecha sin registrar')}."
+            f"de MITRE ATT&CK, el {entry.get('generated_at', 'fecha sin registrar')}."
         )
         add_fact("apt", text, mitre_url(aid), natural_id=aid, label="MITRE ATT&CK")
 
-    # Estadísticas acumuladas — solo números calculados con len(), sin
-    # identificadores ni URLs propios, así no pueden confundir el validador.
-    total_cve = len([e for e in cve_state.get("used", []) if os.path.exists(os.path.join(ROOT, e.get("path", "")))])
-    total_kev = len(kev_state.get("used", []))
-    total_apt = len(apt_state.get("used", []))
+    total_cve = len([e for e in store.list_publications(PUBLICATION_TYPES["cve"]) if os.path.exists(os.path.join(ROOT, e.get("path", "")))])
+    total_kev = len(store.list_publications(PUBLICATION_TYPES["kev"]))
+    total_apt = len(store.list_publications(PUBLICATION_TYPES["apt"]))
     stat_text = (
         f"A la fecha, GreenProof lleva {total_cve} writeup(s) de CVE "
         f"mergeado(s), {total_kev} alerta(s) KEV generada(s) y {total_apt} "
@@ -215,10 +185,7 @@ def call_anthropic(facts, model, api_key):
 
 
 def extract_model_json(response):
-    """Saca el texto de la respuesta de Messages API y lo parsea como JSON,
-    tolerando que el modelo lo haya envuelto en un bloque ```json."""
-    blocks = response.get("content", [])
-    text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text").strip()
+    text = "".join(b.get("text", "") for b in response.get("content", []) if b.get("type") == "text").strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```$", "", text)
@@ -226,7 +193,6 @@ def extract_model_json(response):
 
 
 def validate_items(items, facts):
-    """Devuelve (ok, razón_si_falla). Rechaza, no corrige."""
     if not isinstance(items, list) or not items:
         return False, "El modelo no devolvió ningún ítem."
 
@@ -269,7 +235,7 @@ def validate_items(items, facts):
 
 
 def render_bulletin(env, items, meta, generated_at):
-    sources = []  # [{label, url}]
+    sources = []
     url_to_num = {}
     rendered_items = []
 
@@ -278,23 +244,21 @@ def render_bulletin(env, items, meta, generated_at):
         for fid in item["fact_ids"]:
             fmeta = meta[fid]
             url = None
-            for f in item["_facts_lookup"]:
-                if f["id"] == fid:
-                    url = f.get("source_url")
+            for fact in item["_facts_lookup"]:
+                if fact["id"] == fid:
+                    url = fact.get("source_url")
                     break
             if not url:
                 continue
             if url not in url_to_num:
                 sources.append({"label": fmeta.get("label") or "Fuente", "url": url})
                 url_to_num[url] = len(sources)
-            n = url_to_num[url]
-            if n not in nums:
-                nums.append(n)
-        suffix = "".join(f" [{n}]" for n in nums)
-        rendered_items.append({"text": item["text"], "citation_suffix": suffix})
+            num = url_to_num[url]
+            if num not in nums:
+                nums.append(num)
+        rendered_items.append({"text": item["text"], "citation_suffix": "".join(f" [{n}]" for n in nums)})
 
-    template = env.get_template("bulletin_template.md.j2")
-    return template.render(
+    return env.get_template("bulletin_template.md.j2").render(
         generated_at=generated_at,
         items=rendered_items,
         sources=sources,
@@ -303,93 +267,96 @@ def render_bulletin(env, items, meta, generated_at):
 
 def main():
     config = load_config()
-    state_path = os.path.join(ROOT, config["bulletin_state_file"])
-    cursor = load_json(state_path, {"last_bulletin_at": None, "covered": {"cve": [], "kev": [], "apt": []}})
-
-    facts, meta = build_facts(config, cursor)
-    # Si el único hecho es la estadística acumulada, no hay nada real nuevo.
-    real_facts = [f for f in facts if f["type"] != "stat"]
-    if not real_facts:
-        print("No hay hechos nuevos desde el último boletín — nada que reportar.")
-        sys.exit(3)
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        print(
-            "Falta el secret ANTHROPIC_API_KEY — el boletín queda deshabilitado "
-            "hasta que lo configures (ver README, sección 'Boletín de inteligencia')."
-        )
-        sys.exit(3)
-
-    model = config.get("bulletin_model", "claude-haiku-4-5-20251001")
-
+    store = StateStore(config=config)
     try:
-        response = call_anthropic(facts, model, api_key)
-    except urllib.error.HTTPError as e:
-        try:
-            body = e.read().decode("utf-8", errors="replace")
-        except Exception:
-            body = "(no se pudo leer el cuerpo de la respuesta)"
-        print(f"No se pudo consultar la API de Anthropic: HTTP {e.code} — {body}", file=sys.stderr)
-        sys.exit(1)
-    except (urllib.error.URLError, TimeoutError) as e:
-        print(f"No se pudo consultar la API de Anthropic: {e}", file=sys.stderr)
-        sys.exit(1)
+        with store.tracked_run("gen_bulletin"):
+            cursor = store.bulletin_cursor()
+            facts, meta = build_facts(config, cursor, store)
+            real_facts = [f for f in facts if f["type"] != "stat"]
+            if not real_facts:
+                print("No hay hechos nuevos desde el último boletín — nada que reportar.")
+                sys.exit(3)
 
-    try:
-        parsed = extract_model_json(response)
-        items = parsed.get("items", [])
-    except (json.JSONDecodeError, AttributeError, KeyError) as e:
-        print(f"La respuesta del modelo no es JSON válido: {e}", file=sys.stderr)
-        sys.exit(1)
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                print(
+                    "Falta el secret ANTHROPIC_API_KEY — el boletín queda deshabilitado "
+                    "hasta que lo configures (ver README, sección 'Boletín de inteligencia')."
+                )
+                sys.exit(3)
 
-    ok, reason = validate_items(items, facts)
-    if not ok:
-        print(f"El boletín generado no pasó el validador — no se commitea nada. Motivo: {reason}", file=sys.stderr)
-        sys.exit(1)
+            model = config.get("bulletin_model", "claude-haiku-4-5-20251001")
+            try:
+                response = call_anthropic(facts, model, api_key)
+            except urllib.error.HTTPError as e:
+                try:
+                    body = e.read().decode("utf-8", errors="replace")
+                except Exception:
+                    body = "(no se pudo leer el cuerpo de la respuesta)"
+                print(f"No se pudo consultar la API de Anthropic: HTTP {e.code} — {body}", file=sys.stderr)
+                sys.exit(1)
+            except (urllib.error.URLError, TimeoutError) as e:
+                print(f"No se pudo consultar la API de Anthropic: {e}", file=sys.stderr)
+                sys.exit(1)
 
-    for item in items:
-        item["_facts_lookup"] = facts
+            try:
+                parsed = extract_model_json(response)
+                items = parsed.get("items", [])
+            except (json.JSONDecodeError, AttributeError, KeyError) as e:
+                print(f"La respuesta del modelo no es JSON válido: {e}", file=sys.stderr)
+                sys.exit(1)
 
-    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    env = Environment(
-        loader=FileSystemLoader(os.path.join(ROOT, "templates")),
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
-    rendered = render_bulletin(env, items, meta, generated_at)
+            ok, reason = validate_items(items, facts)
+            if not ok:
+                print(f"El boletín generado no pasó el validador — no se commitea nada. Motivo: {reason}", file=sys.stderr)
+                sys.exit(1)
 
-    out_dir = os.path.join(ROOT, config["bulletin_dir"])
-    os.makedirs(out_dir, exist_ok=True)
-    base = generated_at
-    out_path = os.path.join(out_dir, f"{base}.md")
-    suffix = 2
-    while os.path.exists(out_path):
-        out_path = os.path.join(out_dir, f"{base}-{suffix}.md")
-        suffix += 1
+            for item in items:
+                item["_facts_lookup"] = facts
 
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(rendered)
-    print(f"Escrito: {out_path}")
+            generated_at = utc_today()
+            rendered = render_bulletin(template_env(), items, meta, generated_at)
 
-    # Actualizar el cursor: TODOS los hechos no-stat que se le mandaron al
-    # modelo esta corrida quedan cubiertos, los haya usado o no en su
-    # redacción — así ningún hecho queda dando vueltas para siempre pidiendo
-    # ser incluido, y el boletín nunca repite un hecho ya considerado.
-    covered = cursor.setdefault("covered", {"cve": [], "kev": [], "apt": []})
-    for fid, fmeta in meta.items():
-        kind = fmeta["kind"]
-        nid = fmeta["natural_id"]
-        if kind in ("cve", "kev", "apt") and nid and nid not in covered.setdefault(kind, []):
-            covered[kind].append(nid)
-    cursor["last_bulletin_at"] = generated_at
+            out_dir = os.path.join(ROOT, config["bulletin_dir"])
+            os.makedirs(out_dir, exist_ok=True)
+            base = generated_at
+            out_path = os.path.join(out_dir, f"{base}.md")
+            suffix = 2
+            while os.path.exists(out_path):
+                out_path = os.path.join(out_dir, f"{base}-{suffix}.md")
+                suffix += 1
 
-    with open(state_path, "w", encoding="utf-8") as f:
-        json.dump(cursor, f, ensure_ascii=False, indent=2)
-    print(f"Actualizado: {state_path}")
+            atomic_write_text(out_path, rendered)
+            print(f"Escrito: {out_path}")
 
-    print(f"OK — boletín generado con {len(items)} ítem(s) validado(s).")
-    sys.exit(0)
+            covered = cursor.setdefault("covered", {"cve": [], "kev": [], "apt": []})
+            rel_bulletin_path = os.path.relpath(out_path, ROOT)
+            for fid, fmeta in meta.items():
+                kind = fmeta["kind"]
+                natural_id = fmeta["natural_id"]
+                fact = next((f for f in facts if f["id"] == fid), None)
+                if fact is not None:
+                    store.record_bulletin_fact(
+                        bulletin_path=rel_bulletin_path,
+                        fact_key=fid,
+                        fact_kind=kind,
+                        natural_id=natural_id,
+                        fact_text=fact["text"],
+                        source_url=fact["source_url"],
+                        created_at=generated_at,
+                    )
+                if kind in ("cve", "kev", "apt") and natural_id and natural_id not in covered.setdefault(kind, []):
+                    covered[kind].append(natural_id)
+                    store.record_coverage("bulletin", kind, natural_id, generated_at)
+            cursor["last_bulletin_at"] = generated_at
+            store.set_cursor("bulletin.last_bulletin_at", generated_at)
+            store.export_legacy_state()
+            atomic_write_json(os.path.join(ROOT, config["bulletin_state_file"]), store.bulletin_cursor())
+            print(f"Actualizado: {os.path.join(ROOT, config['bulletin_state_file'])}")
+            print(f"OK — boletín generado con {len(items)} ítem(s) validado(s).")
+            sys.exit(0)
+    finally:
+        store.close()
 
 
 if __name__ == "__main__":

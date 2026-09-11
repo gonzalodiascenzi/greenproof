@@ -57,7 +57,8 @@ jobs:
 
           git checkout -b "$BRANCH"
           git add "$(python -c "import yaml;print(yaml.safe_load(open('config.yml'))['writeups_dir'])")" \
-                  "$(python -c "import yaml;print(yaml.safe_load(open('config.yml'))['state_file'])")"
+                  "$(python -c "import yaml;print(yaml.safe_load(open('config.yml'))['state_file'])")" \
+                  "$(python -c "import yaml;print(yaml.safe_load(open('config.yml'))['state_db_file'])")"
           git commit -m "Draft: ${CVE_ID} writeup"
           git push origin "$BRANCH"
 
@@ -74,4 +75,4 @@ jobs:
       - name: Revertir el marcado de 'usado' si no se pudo abrir el PR
         if: failure()
         run: |
-          git checkout -- data/used_cves.json || true
+          git checkout -- data/used_cves.json data/greenproof_state.db || true

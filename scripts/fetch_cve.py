@@ -11,13 +11,14 @@ import json
 import os
 import sys
 import time
-import urllib.request
 import urllib.error
 import urllib.parse
-import yaml
+import urllib.request
 from datetime import datetime, timedelta, timezone
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from gp_common import ROOT, atomic_write_json, atomic_write_text, load_config, read_json_file
+from gp_state import PUBLICATION_TYPES, StateStore
+
 NVD_ENDPOINT = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
 # Cuando la cola curada se agota, buscamos CVEs recientes reales en este
@@ -27,16 +28,8 @@ FRESH_LOOKBACK_DAYS = 30
 FRESH_MIN_CVSS = 7.0
 
 
-def load_config():
-    with open(os.path.join(ROOT, "config.yml"), encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
 def load_json(path, default):
-    if not os.path.exists(path):
-        return default
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    return read_json_file(path, default)
 
 
 def next_cve_id(queue, used_ids):
@@ -192,35 +185,37 @@ def normalize(nvd_response, queue_item):
 
 def main():
     config = load_config()
-    queue = load_json(os.path.join(ROOT, config["queue_file"]), [])
-    state = load_json(os.path.join(ROOT, config["state_file"]), {"used": []})
-    used_ids = {u["id"] for u in state["used"]}
-    api_key = os.environ.get("NVD_API_KEY")
+    store = StateStore(config=config)
+    try:
+        with store.tracked_run("fetch_cve"):
+            api_key = os.environ.get("NVD_API_KEY")
+            item = store.next_pending_cve()
+            if item is None:
+                print("Cola curada agotada — busco un CVE reciente real en la NVD.")
+                used_ids = {
+                    item["natural_id"]
+                    for item in store.list_publications(PUBLICATION_TYPES["cve"])
+                }
+                item = find_fresh_cve(used_ids, api_key=api_key)
+            if item is None:
+                print("No hay CVEs nuevos: ni en la cola curada, ni en el feed reciente de la NVD.")
+                sys.exit(3)
 
-    item = next_cve_id(queue, used_ids)
-    if item is None:
-        print("Cola curada agotada — busco un CVE reciente real en la NVD.")
-        item = find_fresh_cve(used_ids, api_key=api_key)
-    if item is None:
-        print("No hay CVEs nuevos: ni en la cola curada, ni en el feed reciente de la NVD.")
-        sys.exit(3)
+            print(f"Próximo CVE: {item['id']} ({item.get('known_as') or 'sin apodo'})")
+            nvd_response = fetch_from_nvd(item["id"], api_key=api_key)
+            data = normalize(nvd_response, item)
+            if data is None:
+                print(f"La NVD no devolvió datos para {item['id']}.")
+                sys.exit(1)
 
-    print(f"Próximo CVE: {item['id']} ({item.get('known_as') or 'sin apodo'})")
-    nvd_response = fetch_from_nvd(item["id"], api_key=api_key)
-    data = normalize(nvd_response, item)
-    if data is None:
-        print(f"La NVD no devolvió datos para {item['id']}.")
-        sys.exit(1)
+            out_path = os.path.join(ROOT, ".greenproof_cve_data.json")
+            atomic_write_json(out_path, data)
 
-    out_path = os.path.join(ROOT, ".greenproof_cve_data.json")
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+            atomic_write_text(os.path.join(ROOT, ".greenproof_current_cve.txt"), data["cve_id"])
 
-    # Para que el workflow sepa qué id está procesando sin volver a parsear JSON.
-    with open(os.path.join(ROOT, ".greenproof_current_cve.txt"), "w", encoding="utf-8") as f:
-        f.write(data["cve_id"])
-
-    print(f"OK — datos de {data['cve_id']} guardados en {out_path}")
+            print(f"OK — datos de {data['cve_id']} guardados en {out_path}")
+    finally:
+        store.close()
 
 
 if __name__ == "__main__":

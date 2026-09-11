@@ -15,27 +15,17 @@ Exit codes:
 import json
 import os
 import sys
-import urllib.request
 import urllib.error
-from datetime import datetime, timezone
+import urllib.request
 
-import yaml
-from jinja2 import Environment, FileSystemLoader
+from gp_common import ROOT, atomic_write_text, load_config, read_json_file, template_env, utc_today
+from gp_state import PUBLICATION_TYPES, StateStore
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 
 
-def load_config():
-    with open(os.path.join(ROOT, "config.yml"), encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
 def load_json(path, default):
-    if not os.path.exists(path):
-        return default
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    return read_json_file(path, default)
 
 
 def fetch_kev():
@@ -47,77 +37,64 @@ def fetch_kev():
 
 def main():
     config = load_config()
-    kev_state = load_json(os.path.join(ROOT, config["kev_state_file"]), {"used": []})
-    cve_state = load_json(os.path.join(ROOT, config["state_file"]), {"used": []})
-
-    kev_used_ids = {u["cve_id"] for u in kev_state["used"]}
-    cve_covered_ids = {u["id"] for u in cve_state["used"]}
-
+    store = StateStore(config=config)
     try:
-        catalog = fetch_kev()
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
-        print(f"No se pudo traer el catálogo KEV de CISA: {e}", file=sys.stderr)
-        sys.exit(1)
+        with store.tracked_run("gen_kev_alert"):
+            kev_used_ids = {u["natural_id"] for u in store.list_publications(PUBLICATION_TYPES["kev"])}
+            cve_covered_ids = {u["natural_id"] for u in store.list_publications(PUBLICATION_TYPES["cve"])}
 
-    entries = catalog.get("vulnerabilities", [])
-    # Los más nuevos primero: dateAdded es YYYY-MM-DD, ordena bien como string.
-    entries.sort(key=lambda e: e.get("dateAdded", ""), reverse=True)
+            try:
+                catalog = fetch_kev()
+            except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+                print(f"No se pudo traer el catálogo KEV de CISA: {e}", file=sys.stderr)
+                sys.exit(1)
 
-    item = next(
-        (
-            e
-            for e in entries
-            if e["cveID"] not in kev_used_ids and e["cveID"] not in cve_covered_ids
-        ),
-        None,
-    )
-    if item is None:
-        print("No hay ningún CVE nuevo en el catálogo KEV que no tengamos ya cubierto.")
-        sys.exit(3)
+            entries = catalog.get("vulnerabilities", [])
+            entries.sort(key=lambda e: e.get("dateAdded", ""), reverse=True)
 
-    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            item = next(
+                (
+                    e
+                    for e in entries
+                    if e["cveID"] not in kev_used_ids and e["cveID"] not in cve_covered_ids
+                ),
+                None,
+            )
+            if item is None:
+                print("No hay ningún CVE nuevo en el catálogo KEV que no tengamos ya cubierto.")
+                sys.exit(3)
 
-    env = Environment(
-        loader=FileSystemLoader(os.path.join(ROOT, "templates")),
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
-    template = env.get_template("kev_alert_template.md.j2")
-    rendered = template.render(
-        cve_id=item["cveID"],
-        vulnerability_name=item.get("vulnerabilityName"),
-        vendor_project=item.get("vendorProject"),
-        product=item.get("product"),
-        date_added=item.get("dateAdded"),
-        due_date=item.get("dueDate"),
-        known_ransomware_use=item.get("knownRansomwareCampaignUse", "Unknown"),
-        short_description=item.get("shortDescription"),
-        required_action=item.get("requiredAction"),
-        generated_at=generated_at,
-    )
+            generated_at = utc_today()
+            rendered = template_env().get_template("kev_alert_template.md.j2").render(
+                cve_id=item["cveID"],
+                vulnerability_name=item.get("vulnerabilityName"),
+                vendor_project=item.get("vendorProject"),
+                product=item.get("product"),
+                date_added=item.get("dateAdded"),
+                due_date=item.get("dueDate"),
+                known_ransomware_use=item.get("knownRansomwareCampaignUse", "Unknown"),
+                short_description=item.get("shortDescription"),
+                required_action=item.get("requiredAction"),
+                generated_at=generated_at,
+            )
 
-    out_dir = os.path.join(ROOT, config["kev_dir"])
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"{item['cveID']}.md")
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(rendered)
-    print(f"Escrito: {out_path}")
+            out_dir = os.path.join(ROOT, config["kev_dir"])
+            os.makedirs(out_dir, exist_ok=True)
+            out_path = os.path.join(out_dir, f"{item['cveID']}.md")
+            atomic_write_text(out_path, rendered)
+            print(f"Escrito: {out_path}")
 
-    kev_state["used"].append(
-        {
-            "cve_id": item["cveID"],
-            "drafted_at": generated_at,
-            "path": os.path.relpath(out_path, ROOT),
-        }
-    )
-    kev_state_path = os.path.join(ROOT, config["kev_state_file"])
-    with open(kev_state_path, "w", encoding="utf-8") as f:
-        json.dump(kev_state, f, ensure_ascii=False, indent=2)
+            store.record_publication(
+                publication_type=PUBLICATION_TYPES["kev"],
+                natural_id=item["cveID"],
+                path=os.path.relpath(out_path, ROOT),
+                generated_at=generated_at,
+            )
 
-    print(f"OK — alerta KEV para {item['cveID']} generada.")
-    sys.exit(0)
+            print(f"OK — alerta KEV para {item['cveID']} generada.")
+    finally:
+        store.close()
 
 
 if __name__ == "__main__":
     main()
-

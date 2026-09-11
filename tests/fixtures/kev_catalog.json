@@ -1,0 +1,15 @@
+{
+  "vulnerabilities": [
+    {
+      "cveID": "CVE-2026-99999",
+      "vendorProject": "Acme",
+      "product": "Widget",
+      "vulnerabilityName": "Acme Widget RCE",
+      "dateAdded": "2026-09-11",
+      "dueDate": "2026-10-01",
+      "knownRansomwareCampaignUse": "Unknown",
+      "shortDescription": "Remote code execution in Acme Widget.",
+      "requiredAction": "Apply vendor updates."
+    }
+  ]
+}

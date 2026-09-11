@@ -171,6 +171,12 @@ python scripts/enrich_cve.py                                         # enrichmen
 ANTHROPIC_API_KEY=... python scripts/gen_bulletin.py                 # boletín de inteligencia
 ```
 
+Test suite local determinística (sin depender de internet):
+
+```bash
+python -m unittest discover -s tests -v
+```
+
 Todos corren en una máquina con salida a internet (NVD, CISA, Anthropic —
 o ninguna en el caso de `gen_apt_profile.py`, que usa el snapshot curado en
 `data/known_apts.json`). Cada script termina con código `3` cuando no hay
@@ -187,17 +193,20 @@ greenproof-mvp/
 ├─ config.yml                            # track, cadencia, paths de cada cola/estado
 ├─ data/
 │  ├─ notable_cves.json                  # cola curada de CVEs conocidos (editable)
-│  ├─ used_cves.json                     # estado — CVEs ya mergeados (writeup profundo)
 │  ├─ known_apts.json                    # cola curada de actores (MITRE ATT&CK)
-│  ├─ used_apts.json                     # estado — perfiles de actor ya generados
-│  ├─ used_kev.json                      # estado — alertas KEV ya generadas
-│  └─ bulletin_state.json                # estado — hechos ya reportados en un boletín
+│  ├─ greenproof_state.db                # storage SQLite central (verdad operativa)
+│  ├─ used_cves.json                     # snapshot/export legado del storage
+│  ├─ used_apts.json                     # snapshot/export legado del storage
+│  ├─ used_kev.json                      # snapshot/export legado del storage
+│  └─ bulletin_state.json                # snapshot/export legado del storage
 ├─ templates/
 │  ├─ writeup_template.md.j2             # plantilla del writeup profundo
 │  ├─ kev_alert_template.md.j2           # plantilla de alerta KEV
 │  ├─ apt_profile_template.md.j2         # plantilla de perfil de actor
 │  └─ bulletin_template.md.j2            # plantilla del boletín de inteligencia
 ├─ scripts/
+│  ├─ gp_common.py                       # utilidades comunes (paths, templates, writes atómicos)
+│  ├─ gp_state.py                        # storage SQLite, migración y snapshots legados
 │  ├─ fetch_cve.py                       # elige CVE (cola + feed NVD en vivo) y trae sus datos
 │  ├─ generate_writeup.py                # renderiza y guarda el writeup profundo
 │  ├─ gen_kev_alert.py                   # genera una alerta KEV nueva
@@ -209,10 +218,12 @@ greenproof-mvp/
 │  ├─ kev/<CVE-ID>.md                    # alertas KEV (commit directo)
 │  ├─ apt/<GROUP-ID>.md                  # perfiles de actor (commit directo)
 │  └─ bulletins/<fecha>.md               # boletines de inteligencia (commit directo)
+├─ tests/                             # unit + integración con fixtures determinísticos
 └─ .github/workflows/
    ├─ greenproof.yml                     # writeup profundo — abre PR
    ├─ greenproof-intel.yml               # señales automáticas — commit directo
-   └─ greenproof-bulletin.yml            # boletín de inteligencia — commit directo
+   ├─ greenproof-bulletin.yml            # boletín de inteligencia — commit directo
+   └─ tests.yml                          # CI dedicada para unittest
 ```
 
 ## Qué NO hace (a propósito)
