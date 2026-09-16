@@ -15,10 +15,10 @@ name: GreenProof — boletín de inteligencia (deep research acotado)
 
 on:
   schedule:
-    # 1 vez por día, poco después de la última corrida de señales
-    # automáticas del día (23:00 UTC) — así el boletín puede incluir lo que
-    # se generó esa misma jornada.
-    - cron: "30 23 * * *"
+    # 1 vez por día, a las 6:00 ART (09:00 UTC), para tenerlo listo a
+    # primera hora. Si volvés a cambiar el horario, actualizá también este
+    # comentario.
+    - cron: "0 9 * * *"
   workflow_dispatch: {}
 
 permissions:
