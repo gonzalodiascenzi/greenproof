@@ -129,6 +129,11 @@
       "cve_id": "CVE-2026-76460",
       "drafted_at": "2026-09-16",
       "path": "threat-intel/kev/CVE-2026-76460.md"
+    },
+    {
+      "cve_id": "CVE-2026-87886",
+      "drafted_at": "2026-09-16",
+      "path": "threat-intel/kev/CVE-2026-87886.md"
     }
   ]
 }
