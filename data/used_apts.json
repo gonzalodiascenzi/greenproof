@@ -1,4 +1,10 @@
 {
-  "used": []
+  "used": [
+    {
+      "attack_id": "G0007",
+      "name": "APT28",
+      "drafted_at": "2026-09-17",
+      "path": "threat-intel/apt/G0007.md"
+    }
+  ]
 }
-
