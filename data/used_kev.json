@@ -154,6 +154,11 @@
       "cve_id": "CVE-2026-66384",
       "drafted_at": "2026-09-17",
       "path": "threat-intel/kev/CVE-2026-66384.md"
+    },
+    {
+      "cve_id": "CVE-2021-23758",
+      "drafted_at": "2026-09-18",
+      "path": "threat-intel/kev/CVE-2021-23758.md"
     }
   ]
 }
