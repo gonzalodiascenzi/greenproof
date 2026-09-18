@@ -159,6 +159,11 @@
       "cve_id": "CVE-2021-23758",
       "drafted_at": "2026-09-18",
       "path": "threat-intel/kev/CVE-2021-23758.md"
+    },
+    {
+      "cve_id": "CVE-2025-39964",
+      "drafted_at": "2026-09-18",
+      "path": "threat-intel/kev/CVE-2025-39964.md"
     }
   ]
 }
