@@ -214,6 +214,11 @@
       "cve_id": "CVE-2026-73570",
       "drafted_at": "2026-09-20",
       "path": "threat-intel/kev/CVE-2026-73570.md"
+    },
+    {
+      "cve_id": "CVE-2026-72530",
+      "drafted_at": "2026-09-21",
+      "path": "threat-intel/kev/CVE-2026-72530.md"
     }
   ]
 }
