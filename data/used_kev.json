@@ -234,6 +234,11 @@
       "cve_id": "CVE-2026-64849",
       "drafted_at": "2026-09-22",
       "path": "threat-intel/kev/CVE-2026-64849.md"
+    },
+    {
+      "cve_id": "CVE-2026-33824",
+      "drafted_at": "2026-09-22",
+      "path": "threat-intel/kev/CVE-2026-33824.md"
     }
   ]
 }
