@@ -384,6 +384,11 @@
       "cve_id": "CVE-2026-104286",
       "drafted_at": "2026-10-01",
       "path": "threat-intel/kev/CVE-2026-104286.md"
+    },
+    {
+      "cve_id": "CVE-2026-102490",
+      "drafted_at": "2026-10-02",
+      "path": "threat-intel/kev/CVE-2026-102490.md"
     }
   ]
 }
