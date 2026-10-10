@@ -479,6 +479,11 @@
       "cve_id": "CVE-2021-3199",
       "drafted_at": "2026-10-09",
       "path": "threat-intel/kev/CVE-2021-3199.md"
+    },
+    {
+      "cve_id": "CVE-2015-3306",
+      "drafted_at": "2026-10-10",
+      "path": "threat-intel/kev/CVE-2015-3306.md"
     }
   ]
 }
