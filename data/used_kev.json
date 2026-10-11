@@ -489,6 +489,11 @@
       "cve_id": "CVE-2026-56155",
       "drafted_at": "2026-10-10",
       "path": "threat-intel/kev/CVE-2026-56155.md"
+    },
+    {
+      "cve_id": "CVE-2026-56164",
+      "drafted_at": "2026-10-11",
+      "path": "threat-intel/kev/CVE-2026-56164.md"
     }
   ]
 }
