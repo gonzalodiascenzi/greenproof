@@ -509,6 +509,11 @@
       "cve_id": "CVE-2008-4128",
       "drafted_at": "2026-10-12",
       "path": "threat-intel/kev/CVE-2008-4128.md"
+    },
+    {
+      "cve_id": "CVE-2026-56291",
+      "drafted_at": "2026-10-12",
+      "path": "threat-intel/kev/CVE-2026-56291.md"
     }
   ]
 }
