@@ -544,6 +544,11 @@
       "cve_id": "CVE-2026-76519",
       "drafted_at": "2026-10-15",
       "path": "threat-intel/kev/CVE-2026-76519.md"
+    },
+    {
+      "cve_id": "CVE-2026-105133",
+      "drafted_at": "2026-10-15",
+      "path": "threat-intel/kev/CVE-2026-105133.md"
     }
   ]
 }
