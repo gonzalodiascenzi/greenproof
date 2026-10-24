@@ -729,6 +729,11 @@
       "cve_id": "CVE-2026-45247",
       "drafted_at": "2026-10-24",
       "path": "threat-intel/kev/CVE-2026-45247.md"
+    },
+    {
+      "cve_id": "CVE-2022-0492",
+      "drafted_at": "2026-10-24",
+      "path": "threat-intel/kev/CVE-2022-0492.md"
     }
   ]
 }
