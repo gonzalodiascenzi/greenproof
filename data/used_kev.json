@@ -814,6 +814,11 @@
       "cve_id": "CVE-2009-1537",
       "drafted_at": "2026-10-28",
       "path": "threat-intel/kev/CVE-2009-1537.md"
+    },
+    {
+      "cve_id": "CVE-2009-3459",
+      "drafted_at": "2026-10-28",
+      "path": "threat-intel/kev/CVE-2009-3459.md"
     }
   ]
 }
