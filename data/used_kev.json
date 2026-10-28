@@ -809,6 +809,11 @@
       "cve_id": "CVE-2026-111497",
       "drafted_at": "2026-10-27",
       "path": "threat-intel/kev/CVE-2026-111497.md"
+    },
+    {
+      "cve_id": "CVE-2009-1537",
+      "drafted_at": "2026-10-28",
+      "path": "threat-intel/kev/CVE-2009-1537.md"
     }
   ]
 }
