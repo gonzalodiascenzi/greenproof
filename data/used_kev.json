@@ -1004,6 +1004,11 @@
       "cve_id": "CVE-2024-27834",
       "drafted_at": "2026-11-04",
       "path": "threat-intel/kev/CVE-2024-27834.md"
+    },
+    {
+      "cve_id": "CVE-2026-32201",
+      "drafted_at": "2026-11-04",
+      "path": "threat-intel/kev/CVE-2026-32201.md"
     }
   ]
 }
