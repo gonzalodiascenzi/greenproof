@@ -1014,6 +1014,11 @@
       "cve_id": "CVE-2012-1854",
       "drafted_at": "2026-11-05",
       "path": "threat-intel/kev/CVE-2012-1854.md"
+    },
+    {
+      "cve_id": "CVE-2025-60710",
+      "drafted_at": "2026-11-05",
+      "path": "threat-intel/kev/CVE-2025-60710.md"
     }
   ]
 }
