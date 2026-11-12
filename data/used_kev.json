@@ -1204,6 +1204,11 @@
       "cve_id": "CVE-2021-22054",
       "drafted_at": "2026-11-12",
       "path": "threat-intel/kev/CVE-2021-22054.md"
+    },
+    {
+      "cve_id": "CVE-2025-26399",
+      "drafted_at": "2026-11-12",
+      "path": "threat-intel/kev/CVE-2025-26399.md"
     }
   ]
 }
