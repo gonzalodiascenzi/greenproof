@@ -1234,6 +1234,11 @@
       "cve_id": "CVE-2026-123039",
       "drafted_at": "2026-11-13",
       "path": "threat-intel/kev/CVE-2026-123039.md"
+    },
+    {
+      "cve_id": "CVE-2023-43000",
+      "drafted_at": "2026-11-14",
+      "path": "threat-intel/kev/CVE-2023-43000.md"
     }
   ]
 }
