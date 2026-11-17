@@ -1309,6 +1309,11 @@
       "cve_id": "CVE-2008-0015",
       "drafted_at": "2026-11-16",
       "path": "threat-intel/kev/CVE-2008-0015.md"
+    },
+    {
+      "cve_id": "CVE-2026-2441",
+      "drafted_at": "2026-11-17",
+      "path": "threat-intel/kev/CVE-2026-2441.md"
     }
   ]
 }
