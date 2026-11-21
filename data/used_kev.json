@@ -1409,6 +1409,11 @@
       "cve_id": "CVE-2026-123890",
       "drafted_at": "2026-11-20",
       "path": "threat-intel/kev/CVE-2026-123890.md"
+    },
+    {
+      "cve_id": "CVE-2025-42884",
+      "drafted_at": "2026-11-21",
+      "path": "threat-intel/kev/CVE-2025-42884.md"
     }
   ]
 }
