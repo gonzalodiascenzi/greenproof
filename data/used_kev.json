@@ -1464,6 +1464,11 @@
       "cve_id": "CVE-2025-52691",
       "drafted_at": "2026-11-23",
       "path": "threat-intel/kev/CVE-2025-52691.md"
+    },
+    {
+      "cve_id": "CVE-2026-23760",
+      "drafted_at": "2026-11-23",
+      "path": "threat-intel/kev/CVE-2026-23760.md"
     }
   ]
 }
